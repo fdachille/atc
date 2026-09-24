@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZXV Approach &mdash; ATC Sim</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <header id="topbar">
+    <div class="brand"><span id="brandIcao">KZXV</span> <span id="brandSub">ZEPHYR APP/DEP</span></div>
+    <div class="timectl">
+      <button class="speedbtn" data-speed="pause" id="btnPause">PAUSE</button>
+      <button class="speedbtn active" data-speed="1">1&times;</button>
+      <button class="speedbtn" data-speed="2">2&times;</button>
+      <button class="speedbtn" data-speed="4">4&times;</button>
+      <button class="speedbtn" data-speed="8">8&times;</button>
+      <span id="clock">00:00:00z</span>
+    </div>
+    <div class="diffctl">
+      <label>TRAFFIC</label>
+      <button class="diffbtn active" data-diff="easy">EASY</button>
+      <button class="diffbtn" data-diff="normal">NORMAL</button>
+      <button class="diffbtn" data-diff="hard">HARD</button>
+      <button id="btnLiveTraffic" class="helpbtn liveBtn" title="Pull real, currently-airborne traffic (and that airport's real runway + elevation) into your airspace">&#127760; LIVE TRAFFIC</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><label>SCORE</label><span id="score">0</span></div>
+      <div class="stat"><label>LANDED</label><span id="statLandings">0</span></div>
+      <div class="stat"><label>DEPARTED</label><span id="statDepartures">0</span></div>
+      <div class="stat"><label>INCIDENTS</label><span id="statIncidents">0</span></div>
+    </div>
+    <button id="btnProfile" class="helpbtn">&#8776; PROFILE</button>
+    <button id="btnHelp" class="helpbtn">? HELP</button>
+  </header>
+
+  <main id="main">
+    <div id="helpPanel" class="hidden">
+      <div class="helphead">
+        <h2>Command Reference</h2>
+        <button id="btnHelpClose" title="Close (Esc)">&times;</button>
+      </div>
+      <div class="helpbody">
+        <p>Every command starts with a callsign, e.g. <code>DAL123</code>. Chain multiple instructions with a comma or the word <code>then</code>. Just start typing anywhere on the page &mdash; you don't need to click the command box first. Press <code>&uarr;</code> / <code>&darr;</code> to recall previous commands.</p>
+        <p class="hint">Shortcuts also accept the abbreviations used by <strong>openscope.co</strong>, the well-known browser ATC sim, alongside our own &mdash; whichever you already know will work.</p>
+
+        <h3>Heading</h3>
+        <ul>
+          <li><code>DAL123 fly heading 270</code> &mdash; short: <code>h 270</code> / <code>fh 270</code></li>
+          <li><code>turn left heading 180</code> / <code>turn right heading 090</code> &mdash; short: <code>tl 180</code> / <code>tr 090</code> / <code>t l 180</code> / <code>t r 090</code></li>
+          <li><code>turn left 30 degrees</code> / <code>turn right 30 degrees</code> &mdash; short: <code>t l 30</code> / <code>t r 30</code></li>
+          <li><code>fly present heading</code> &mdash; short: <code>ph</code> / <code>fph</code></li>
+        </ul>
+        <p class="hint"><code>t l</code>/<code>t r</code> read a 3-digit number as an absolute heading and a 1&ndash;2 digit number as a relative turn, e.g. <code>t r 270</code> turns right to heading 270 but <code>t r 30</code> turns right 30&deg; from wherever it's currently pointed.</p>
+
+        <h3>Altitude</h3>
+        <ul>
+          <li><code>climb and maintain 80</code> &mdash; short: <code>c 80</code> / <code>a 80</code></li>
+          <li><code>descend and maintain 40</code> &mdash; short: <code>des 40</code> / <code>d 40</code></li>
+          <li><code>maintain 50</code></li>
+        </ul>
+        <p class="hint">Altitude is entered as flight level (hundreds of feet): <code>80</code> means 8000ft. Values of 1000 or more are read as literal feet instead, so <code>8000</code> still works too.</p>
+
+        <h3>Speed</h3>
+        <ul>
+          <li><code>reduce speed to 200</code> / <code>increase speed to 250</code> &mdash; short: <code>sp 200</code> / <code>-200</code> / <code>+250</code></li>
+          <li><code>maintain present speed</code> &mdash; short: <code>ps</code></li>
+          <li><code>resume normal speed</code> &mdash; short: <code>ns</code></li>
+        </ul>
+
+        <h3>Navigation</h3>
+        <ul>
+          <li><code>direct NORTH</code> &mdash; short: <code>dct NORTH</code> / <code>pd NORTH</code><br>home field fixes: NORTH, NEAST, EAST, SEAST, SOUTH, SWEST, WEST, NWEST</li>
+          <li><code>route NORTH EAST WEST</code> &mdash; short: <code>rt NORTH EAST WEST</code> &mdash; flies each fix in order, then continues on its own</li>
+          <li><code>hold at NORTH</code> &mdash; short: <code>ho NORTH</code> / <code>hold NORTH</code></li>
+          <li>exit a hold &mdash; short: <code>xh</code> (flies present heading, same as <code>ph</code>)</li>
+        </ul>
+        <p class="hint">Every airport has its own set of fixes &mdash; your home field's 8 compass points, or a LIVE TRAFFIC airport's own real charted waypoints, pulled from actual published approach/departure procedures (shown in the log when you import one, and labeled on the radar). Selecting an aircraft draws its planned path &mdash; current leg and any queued route legs &mdash; as a dashed yellow line on the radar.</p>
+        <p class="hint">Our <code>x</code> is short for direct-to-fix. OpenScope uses <code>x</code> for a fix-crossing restriction we don't model &mdash; use <code>dct</code> or <code>pd</code> if that ever trips you up.</p>
+
+        <h3>Arrivals</h3>
+        <ul>
+          <li><code>cleared to land</code> &mdash; short: <code>ld</code> &mdash; uses the aircraft's current/default runway</li>
+          <li><code>cleared to land runway 09</code> &mdash; short: <code>ld 09</code> &mdash; picks a specific runway when the field has more than one</li>
+          <li><code>cleared for the approach</code> &mdash; short: <code>ap</code> / <code>i</code> / <code>ils</code> [runway]</li>
+          <li><code>go around</code> &mdash; short: <code>ga</code></li>
+          <li><code>contact tower</code> &mdash; short: <code>ct</code></li>
+        </ul>
+        <p class="hint">Every runway at the field is drawn on the radar with its own id and heading label (e.g. a runway labeled 09 is heading 090) &mdash; your home field gets one, imported LIVE TRAFFIC airports bring their real full runway layout (parallels, crosswinds, letter suffixes like 09L/09R and all). Vector arrivals onto the runway's extended centerline (within ~2nm), below its glidepath, before clearing them to land on it.</p>
+
+        <h3>Departures</h3>
+        <ul>
+          <li><code>cleared for takeoff</code> &mdash; short: <code>to</code> / <code>cto</code> / <code>/</code> &mdash; uses whichever runway they're sitting at (shown on their strip)</li>
+          <li><code>cleared for takeoff runway 27L</code> &mdash; short: <code>to 27L</code> &mdash; reassigns them to a different runway first</li>
+          <li><code>contact center</code> &mdash; short: <code>ct</code> &mdash; required near their filed fix, at/near filed altitude, to hand off successfully</li>
+        </ul>
+
+        <h3>Misc</h3>
+        <ul>
+          <li><code>squawk 4521</code> &mdash; short: <code>sq 4521</code></li>
+          <li><code>ident</code> &mdash; short: <code>id</code></li>
+          <li><code>say altitude</code> / <code>say heading</code> / <code>say speed</code> &mdash; short: <code>sa</code> / <code>sh</code> / <code>ss</code> or <code>si</code></li>
+          <li><code>say assigned altitude</code> / <code>heading</code> / <code>speed</code> (what they're cleared to, not current) &mdash; short: <code>saa</code> / <code>sah</code> / <code>sas</code></li>
+        </ul>
+
+        <h3>Radar view</h3>
+        <ul>
+          <li>Scroll / pinch to zoom, centered on your cursor</li>
+          <li>Click-drag empty space to pan</li>
+          <li>Double-click to reset the view</li>
+          <li>Click a blip or strip to prefill its callsign</li>
+        </ul>
+
+        <h3>Separation</h3>
+        <p>Keep aircraft at least 3nm apart laterally or 1000ft apart vertically. Losing separation costs points; a collision costs a lot more. Exception: two aircraft each established on their own parallel runway localizer aren't penalized for flying side by side &mdash; that's how independent parallel approaches work in real life. The exemption only applies once <em>both</em> are actually captured and tracking their own centerline; drifting off it, or two aircraft sharing the same runway, still count as a real conflict.</p>
+
+        <h3>Traffic level</h3>
+        <p>EASY/NORMAL/HARD (top bar) controls how many aircraft you're juggling and how often new ones check in &mdash; bump it up whenever you're ready for more.</p>
+
+        <h3>Walkthrough: landing an arrival</h3>
+        <p>Say <code>DAL123</code> checks on, and your radar shows RWY 09 (heading 090) in use:</p>
+        <ul>
+          <li><code>DAL123 des 30</code> &mdash; get it down to 3000</li>
+          <li><code>DAL123 tl 090</code> &mdash; turn it toward the runway's heading (match whatever your RWY label shows)</li>
+          <li><code>DAL123 sp 180</code> &mdash; slow it down for the approach</li>
+          <li><code>DAL123 ld</code> &mdash; clear it to land once it's lined up (within ~2nm of centerline) and near the glidepath</li>
+        </ul>
+        <p class="hint">Watch the PROFILE panel: once cleared, it should track down the dashed glidepath on its own. If it flies through final without capturing, vector it back around and try <code>ld</code> again.</p>
+
+        <h3>Walkthrough: departing and handing off</h3>
+        <p>Say <code>N456CD</code> is ready to go, filed for the NEAST fix at FL180:</p>
+        <ul>
+          <li><code>N456CD to</code> &mdash; cleared for takeoff</li>
+          <li><code>N456CD c 180</code> &mdash; climb and maintain 18000 once airborne</li>
+          <li><code>N456CD dct NEAST</code> &mdash; direct to its filed fix</li>
+          <li><code>N456CD ct</code> &mdash; contact center once it's close to NEAST and near FL180, for the handoff</li>
+        </ul>
+
+        <h3>Live traffic</h3>
+        <p><strong>&#127760; LIVE TRAFFIC</strong> (next to HARD) picks a random major airport somewhere in the world and adopts it as your active field &mdash; its real runway layout, field elevation, and a fresh set of named fixes replace your current ones on the radar &mdash; then pulls whatever's really flying near it right now into your airspace at the same relative position/altitude/heading/speed. Real callsigns, real traffic, a real (if simplified) runway configuration, for you to control. If traffic is already inbound, holding short, or routed via the old fixes when you click it, they may need to be reassigned. Needs an internet connection; data comes from the free <strong>airplanes.live</strong> ADS-B feed, so availability and coverage aren't guaranteed and it may occasionally turn up nothing or fail &mdash; just try again.</p>
+      </div>
+    </div>
+
+    <div id="radarWrap">
+      <canvas id="radar"></canvas>
+      <div id="profileWrap" class="hidden">
+        <div class="profilehead">
+          <span id="profileTitle">APPROACH PROFILE</span>
+          <button id="btnProfileClose" title="Close">&times;</button>
+        </div>
+        <canvas id="profile"></canvas>
+      </div>
+    </div>
+
+    <aside id="sidebar">
+      <div id="strips" class="strips"></div>
+    </aside>
+  </main>
+
+  <footer id="console">
+    <div id="log"></div>
+    <form id="cmdForm" autocomplete="off">
+      <span class="prompt">CLR&gt;</span>
+      <input id="cmdInput" type="text" placeholder="e.g. DAL123 turn left heading 250, descend and maintain 50" autofocus>
+    </form>
+  </footer>
+
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/aircraft.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/radar.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/livetraffic.js"></script>
+<script src="js/game.js"></script>
+<script>
+  var dom = {
+    form: document.getElementById('cmdForm'),
+    input: document.getElementById('cmdInput'),
+    log: document.getElementById('log'),
+    strips: document.getElementById('strips'),
+    score: document.getElementById('score'),
+    statLandings: document.getElementById('statLandings'),
+    statDepartures: document.getElementById('statDepartures'),
+    statIncidents: document.getElementById('statIncidents'),
+    clock: document.getElementById('clock'),
+    speedButtons: Array.prototype.slice.call(document.querySelectorAll('.speedbtn')),
+    diffButtons: Array.prototype.slice.call(document.querySelectorAll('.diffbtn')),
+    helpBtn: document.getElementById('btnHelp'),
+    helpPanel: document.getElementById('helpPanel'),
+    helpClose: document.getElementById('btnHelpClose'),
+    profileBtn: document.getElementById('btnProfile'),
+    profileClose: document.getElementById('btnProfileClose'),
+    profileWrap: document.getElementById('profileWrap'),
+    profileCanvas: document.getElementById('profile'),
+    profileTitle: document.getElementById('profileTitle'),
+    liveBtn: document.getElementById('btnLiveTraffic'),
+    brandIcao: document.getElementById('brandIcao'),
+    brandSub: document.getElementById('brandSub')
+  };
+  var canvas = document.getElementById('radar');
+  var game = new Game(canvas, dom);
+  game.start();
+</script>
+</body>
+</html>
